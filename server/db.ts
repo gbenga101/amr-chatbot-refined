@@ -1,7 +1,15 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import { ENV } from "./_core/env";
+import {
+  assessments,
+  assessmentResponses,
+  assessmentResults,
+  InsertAssessment,
+  InsertAssessmentResponse,
+  InsertAssessmentResult,
+} from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -56,8 +64,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
+      values.role = "admin";
+      updateSet.role = "admin";
     }
 
     if (!values.lastSignedIn) {
@@ -84,9 +92,209 @@ export async function getUserByOpenId(openId: string) {
     return undefined;
   }
 
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.openId, openId))
+    .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * Assessment Database Operations
+ */
+
+/**
+ * Create a new assessment session
+ */
+export async function createAssessmentSession(
+  sessionId: string,
+  userAgent?: string,
+  ipHash?: string
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const data: InsertAssessment = {
+    sessionId,
+    status: "in_progress",
+    userAgent,
+    ipHash,
+  };
+
+  await db.insert(assessments).values(data);
+  return sessionId;
+}
+
+/**
+ * Get assessment session by ID
+ */
+export async function getAssessmentSession(sessionId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const result = await db
+    .select()
+    .from(assessments)
+    .where(eq(assessments.sessionId, sessionId))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : null;
+}
+
+/**
+ * Save a single assessment response
+ */
+export async function saveAssessmentResponse(
+  sessionId: string,
+  questionId: string,
+  category: string,
+  answerText: string,
+  points: number
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const data: InsertAssessmentResponse = {
+    sessionId,
+    questionId,
+    category,
+    answerText,
+    points,
+  };
+
+  await db.insert(assessmentResponses).values(data);
+}
+
+/**
+ * Get all responses for a session
+ */
+export async function getAssessmentResponses(sessionId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const results = await db
+    .select()
+    .from(assessmentResponses)
+    .where(eq(assessmentResponses.sessionId, sessionId));
+
+  return results;
+}
+
+/**
+ * Save assessment result
+ */
+export async function saveAssessmentResult(
+  sessionId: string,
+  totalScore: number,
+  riskLevel: "low" | "moderate" | "high",
+  categoryScores: Record<string, number>,
+  categoryPercentages: Record<string, number>,
+  highestRiskCategories: string[],
+  interpretation: string,
+  recommendations: string[]
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const data: InsertAssessmentResult = {
+    sessionId,
+    totalScore,
+    riskLevel,
+    categoryScores,
+    categoryPercentages,
+    highestRiskCategories,
+    interpretation,
+    recommendations,
+  };
+
+  await db.insert(assessmentResults).values(data);
+}
+
+/**
+ * Get assessment result by session ID
+ */
+export async function getAssessmentResult(sessionId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const result = await db
+    .select()
+    .from(assessmentResults)
+    .where(eq(assessmentResults.sessionId, sessionId))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : null;
+}
+
+/**
+ * Mark assessment as completed
+ */
+export async function completeAssessment(sessionId: string) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  await db
+    .update(assessments)
+    .set({ status: "completed", completedAt: new Date() })
+    .where(eq(assessments.sessionId, sessionId));
+}
+
+/**
+ * Get assessment statistics (for analytics)
+ */
+export async function getAssessmentStats(days: number = 30) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
+
+  // Total completed assessments
+  const totalResult = await db
+    .select({ count: assessmentResults.id })
+    .from(assessmentResults)
+    .where(eq(assessmentResults.id, assessmentResults.id)); // Placeholder, will be filtered by date in real implementation
+
+  // Risk level distribution
+  const riskDistribution = await db
+    .select({
+      riskLevel: assessmentResults.riskLevel,
+      count: assessmentResults.id,
+    })
+    .from(assessmentResults);
+
+  // Average score
+  const avgScoreResult = await db
+    .select({ avgScore: assessmentResults.totalScore })
+    .from(assessmentResults);
+
+  return {
+    totalAssessments: totalResult.length,
+    riskDistribution,
+    averageScore:
+      avgScoreResult.length > 0
+        ? Math.round(
+            avgScoreResult.reduce((sum, r) => sum + (r.avgScore || 0), 0) /
+              avgScoreResult.length
+          )
+        : 0,
+  };
+}
