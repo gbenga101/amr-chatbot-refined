@@ -8,7 +8,7 @@
  * - Results display
  */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -29,15 +29,16 @@ export default function Assessment() {
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // tRPC mutations and queries
+  // tRPC mutations and queries - MUST be called in component body
   const createSessionMutation = trpc.assessment.createSession.useMutation();
   const submitResponseMutation = trpc.assessment.submitResponse.useMutation();
   const submitAssessmentMutation = trpc.assessment.submitAssessment.useMutation();
+  const utils = trpc.useUtils(); // Call hook in component body
 
   /**
    * Start assessment - create session
    */
-  const handleStart = async () => {
+  const handleStart = useCallback(async () => {
     setState("loading");
     try {
       const session = await createSessionMutation.mutateAsync();
@@ -46,7 +47,6 @@ export default function Assessment() {
       setSelectedAnswers({});
       
       // Fetch first question
-      const utils = trpc.useUtils();
       const question = await utils.assessment.getQuestion.fetch({
         sessionId: session.sessionId,
         questionNumber: 1,
@@ -59,50 +59,52 @@ export default function Assessment() {
       setState("error");
       toast.error("Failed to start assessment. Please try again.");
     }
-  };
+  }, [createSessionMutation, utils]);
 
   /**
    * Handle answer selection
    */
-  const handleSelectAnswer = async (answer: string) => {
-    if (!sessionId || !currentQuestion) return;
+  const handleSelectAnswer = useCallback(
+    async (answer: string) => {
+      if (!sessionId || !currentQuestion) return;
 
-    try {
-      setSelectedAnswers((prev) => ({
-        ...prev,
-        [currentQuestion.id]: answer,
-      }));
+      try {
+        setSelectedAnswers((prev) => ({
+          ...prev,
+          [currentQuestion.id]: answer,
+        }));
 
-      // Submit response to backend
-      await submitResponseMutation.mutateAsync({
-        sessionId,
-        questionId: currentQuestion.id,
-        answerText: answer,
-      });
-
-      // Move to next question or show results
-      if (currentQuestionNumber < 12) {
-        setCurrentQuestionNumber(currentQuestionNumber + 1);
-        const utils = trpc.useUtils();
-        const nextQuestion = await utils.assessment.getQuestion.fetch({
+        // Submit response to backend
+        await submitResponseMutation.mutateAsync({
           sessionId,
-          questionNumber: currentQuestionNumber + 1,
+          questionId: currentQuestion.id,
+          answerText: answer,
         });
-        setCurrentQuestion(nextQuestion as AssessmentQuestion);
-      } else {
-        // All questions answered - calculate results
-        handleSubmitAssessment();
+
+        // Move to next question or show results
+        if (currentQuestionNumber < 12) {
+          setCurrentQuestionNumber(currentQuestionNumber + 1);
+          const nextQuestion = await utils.assessment.getQuestion.fetch({
+            sessionId,
+            questionNumber: currentQuestionNumber + 1,
+          });
+          setCurrentQuestion(nextQuestion as AssessmentQuestion);
+        } else {
+          // All questions answered - calculate results
+          await handleSubmitAssessment();
+        }
+      } catch (err) {
+        console.error("Error submitting response:", err);
+        toast.error("Failed to save your answer. Please try again.");
       }
-    } catch (err) {
-      console.error("Error submitting response:", err);
-      toast.error("Failed to save your answer. Please try again.");
-    }
-  };
+    },
+    [sessionId, currentQuestion, currentQuestionNumber, submitResponseMutation, utils]
+  );
 
   /**
    * Submit assessment and get results
    */
-  const handleSubmitAssessment = async () => {
+  const handleSubmitAssessment = useCallback(async () => {
     if (!sessionId) return;
 
     setState("loading");
@@ -119,12 +121,12 @@ export default function Assessment() {
       setState("error");
       toast.error("Failed to calculate results. Please try again.");
     }
-  };
+  }, [sessionId, submitAssessmentMutation]);
 
   /**
    * Restart assessment
    */
-  const handleRestart = () => {
+  const handleRestart = useCallback(() => {
     setSessionId(null);
     setCurrentQuestionNumber(1);
     setSelectedAnswers({});
@@ -132,7 +134,7 @@ export default function Assessment() {
     setResult(null);
     setError(null);
     setState("intro");
-  };
+  }, []);
 
   /**
    * Render based on state
