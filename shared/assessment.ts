@@ -231,26 +231,6 @@ export function getQuestionsByCategory(category: Category): AssessmentQuestion[]
 }
 
 /**
- * Validate that a response is valid for a question
- */
-export function validateResponse(
-  questionId: string,
-  answerText: string
-): { valid: boolean; points?: number; error?: string } {
-  const question = getQuestionById(questionId);
-  if (!question) {
-    return { valid: false, error: "Question not found" };
-  }
-
-  const option = question.options.find((opt) => opt.text === answerText);
-  if (!option) {
-    return { valid: false, error: "Invalid answer option" };
-  }
-
-  return { valid: true, points: option.points };
-}
-
-/**
  * Determine risk level from normalized score
  */
 export function getRiskLevel(score: number): RiskLevel {

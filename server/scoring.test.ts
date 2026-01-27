@@ -67,7 +67,7 @@ describe("Scoring Engine", () => {
     });
 
     it("should calculate MODERATE risk for mid-range answers", () => {
-      // Mix of low and medium answers
+      // Mix of low answers resulting in LOW risk
       const answers = createAnswerSet([2, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]);
       const result = calculateRiskScore(answers);
 
