@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AlertCircle, Download, Share2, Home } from "lucide-react";
 import { motion } from "framer-motion";
 import { RiskLevel } from "@/lib/types";
+import { toast } from "sonner";
 
 interface CategoryScore {
   name: string;
@@ -91,14 +92,91 @@ export default function AssessmentResults({
     },
   ];
 
-  const handleDownload = () => {
-    // TODO: Implement PDF download functionality
-    console.log("Download results as PDF");
+  /**
+   * Generate plain-text summary of assessment results
+   */
+  const generateResultsSummary = (): string => {
+    const timestamp = new Date().toLocaleString();
+    const categoryList = categoryData
+      .map((cat) => `  • ${cat.name}: ${Math.round(cat.percentage)}%`)
+      .join("\n");
+
+    const recommendationsList = recommendations.map((rec) => `  • ${rec}`).join("\n");
+
+    return `AMR RISK ASSESSMENT RESULTS
+${'='.repeat(60)}
+
+Assessment Date: ${timestamp}
+
+OVERALL RISK LEVEL
+${'-'.repeat(60)}
+Total Score: ${totalScore}/100
+Risk Level: ${config.label}
+
+INTERPRETATION
+${'-'.repeat(60)}
+${interpretation}
+
+CATEGORY BREAKDOWN
+${'-'.repeat(60)}
+${categoryList}
+
+${highestRiskCategories.length > 0 ? `HIGHEST RISK AREA(S)\n${'-'.repeat(60)}\n${highestRiskCategories.length === 1 ? `Your highest risk is in the ${highestRiskCategories[0]} category.` : `Your highest risk areas are: ${highestRiskCategories.join(", ")}.`}\n\n` : ""}
+PERSONALIZED RECOMMENDATIONS
+${'-'.repeat(60)}
+${recommendationsList}
+
+MEDICAL DISCLAIMER
+${'-'.repeat(60)}
+This assessment is for EDUCATIONAL PURPOSES ONLY and is NOT a medical
+diagnosis. The results do not constitute medical advice or treatment
+recommendations. If you have health concerns or symptoms, please consult
+a licensed healthcare professional immediately. In case of medical
+emergencies, contact your local emergency services.
+
+${'='.repeat(60)}
+Thank you for taking the AMR Risk Assessment.
+Your responses help raise awareness about antimicrobial resistance.
+`;
   };
 
-  const handleShare = () => {
-    // TODO: Implement share functionality
-    console.log("Share results");
+  /**
+   * Download results as plain-text file
+   */
+  const handleDownload = () => {
+    try {
+      const summary = generateResultsSummary();
+      const blob = new Blob([summary], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `amr-assessment-results-${new Date().getTime()}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Results downloaded successfully!");
+    } catch (error) {
+      console.error("Error downloading results:", error);
+      toast.error("Failed to download results. Please try again.");
+    }
+  };
+
+  /**
+   * Copy results to clipboard
+   */
+  const handleShare = async () => {
+    try {
+      const summary = generateResultsSummary();
+      await navigator.clipboard.writeText(summary);
+      toast.success("Results copied to clipboard!");
+    } catch (error) {
+      console.error("Error copying to clipboard:", error);
+      // Fallback: log to console if clipboard API fails
+      const summary = generateResultsSummary();
+      console.log("Results (copy from console):", summary);
+      toast.error("Failed to copy to clipboard. Check console.");
+    }
   };
 
   return (

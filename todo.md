@@ -55,3 +55,7 @@
 
 ## Bug Fixes
 - [x] Fix invalid hook call error in Assessment component (hooks called in async handler)
+
+## New Features
+- [x] Implement Download Results button (plain-text .txt file)
+- [x] Implement Share Results button (clipboard copy)
