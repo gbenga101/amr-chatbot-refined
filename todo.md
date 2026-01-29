@@ -59,3 +59,10 @@
 ## New Features
 - [x] Implement Download Results button (plain-text .txt file)
 - [x] Implement Share Results button (clipboard copy)
+
+## Question Reordering
+- [x] Reorder ASSESSMENT_QUESTIONS by category: Knowledge → Behavioral → Socioeconomic → Environmental
+- [x] Set knowledge_3 as first question overall (number = 1)
+- [x] Update all question numbers sequentially (1-12)
+- [x] Update test point arrays to match new question order
+- [x] Verify all 41 tests passing

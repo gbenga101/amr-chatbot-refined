@@ -52,8 +52,8 @@ describe("Scoring Engine", () => {
     });
 
     it("should calculate HIGH risk for all maximum answers", () => {
-      // Max points per question: 3, 3, 3, 2, 2, 1, 1, 2, 2, 2, 2, 2
-      const answers = createAnswerSet([3, 3, 3, 2, 2, 1, 1, 2, 2, 2, 2, 2]);
+      // New order: Knowledge (1,2,1) → Behavioral (3,3,3,2) → Socioeconomic (2,2) → Environmental (2,2,2)
+      const answers = createAnswerSet([1, 2, 1, 3, 3, 3, 2, 2, 2, 2, 2, 2]);
       const result = calculateRiskScore(answers);
 
       expect(result.totalScore).toBe(100);
@@ -68,7 +68,7 @@ describe("Scoring Engine", () => {
 
     it("should calculate MODERATE risk for mid-range answers", () => {
       // Mix of low answers resulting in LOW risk
-      const answers = createAnswerSet([2, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]);
+      const answers = createAnswerSet([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0]);
       const result = calculateRiskScore(answers);
 
       expect(result.riskLevel).toBe("low");
@@ -85,8 +85,8 @@ describe("Scoring Engine", () => {
 
     it("should handle tied highest risk categories", () => {
       // Create a scenario where two categories tie for highest
-      // Behavioral: 11 (max), Knowledge: 4 (max), Environmental: 0, Socioeconomic: 0
-      const answers = createAnswerSet([3, 3, 3, 2, 2, 1, 1, 0, 0, 0, 0, 0]);
+      // Knowledge: 4 (max), Behavioral: 11 (max), Environmental: 0, Socioeconomic: 0
+      const answers = createAnswerSet([1, 2, 1, 3, 3, 3, 2, 0, 0, 0, 0, 0]);
       const result = calculateRiskScore(answers);
 
       // Both behavioral and knowledge should be at 100%
@@ -98,7 +98,7 @@ describe("Scoring Engine", () => {
 
     it("should validate category weights sum to 1.0", () => {
       // Verify the weighted calculation
-      const answers = createAnswerSet([3, 3, 3, 2, 2, 1, 1, 2, 2, 2, 2, 2]);
+      const answers = createAnswerSet([1, 2, 1, 3, 3, 3, 2, 2, 2, 2, 2, 2]);
       const result = calculateRiskScore(answers);
 
       // All categories at 100%, weighted sum should be 100
@@ -106,9 +106,9 @@ describe("Scoring Engine", () => {
     });
 
     it("should correctly calculate partial scores", () => {
-      // Behavioral: 5/11 = 45%, Knowledge: 2/4 = 50%, Environmental: 3/6 = 50%, Socioeconomic: 2/4 = 50%
-      // Total: (45 * 0.4) + (50 * 0.2) + (50 * 0.2) + (50 * 0.2) = 18 + 10 + 10 + 10 = 48
-      const answers = createAnswerSet([3, 3, 0, 0, 2, 0, 0, 2, 2, 0, 2, 0]);
+      // Knowledge: 2/4 = 50%, Behavioral: 5/11 = 45%, Socioeconomic: 2/4 = 50%, Environmental: 3/6 = 50%
+      // Total: (50 * 0.2) + (45 * 0.4) + (50 * 0.2) + (50 * 0.2) = 10 + 18 + 10 + 10 = 48
+      const answers = createAnswerSet([0, 2, 0, 3, 3, 0, 0, 2, 0, 0, 2, 2]);
       const result = calculateRiskScore(answers);
 
       expect(result.totalScore).toBeCloseTo(55, 0);
@@ -130,7 +130,7 @@ describe("Scoring Engine", () => {
     });
 
     it("should generate appropriate recommendations for HIGH risk", () => {
-      const answers = createAnswerSet([3, 3, 3, 2, 2, 1, 1, 2, 2, 2, 2, 2]);
+      const answers = createAnswerSet([1, 2, 1, 3, 3, 3, 2, 2, 2, 2, 2, 2]);
       const result = calculateRiskScore(answers);
 
       expect(result.recommendations.some((r) => r.includes("healthcare professional"))).toBe(true);
@@ -139,8 +139,8 @@ describe("Scoring Engine", () => {
     it("should include medical disclaimer in all recommendations", () => {
       const testCases = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // LOW
-        [2, 3, 0, 0, 2, 0, 0, 2, 2, 0, 0, 0], // MODERATE
-        [3, 3, 3, 2, 2, 1, 1, 2, 2, 2, 2, 2], // HIGH
+        [0, 2, 0, 3, 0, 0, 0, 2, 0, 0, 2, 0], // MODERATE
+        [1, 2, 1, 3, 3, 3, 2, 2, 2, 2, 2, 2], // HIGH
       ];
 
       testCases.forEach((points) => {
@@ -191,9 +191,9 @@ describe("Scoring Engine", () => {
 
   describe("Category Scoring", () => {
     it("should correctly calculate behavioral category score", () => {
-      // Behavioral questions: 1-4
+      // Behavioral questions: 4-7 (new order)
       // Max: 3 + 3 + 3 + 2 = 11
-      const answers = createAnswerSet([3, 3, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
+      const answers = createAnswerSet([0, 0, 0, 3, 3, 3, 2, 0, 0, 0, 0, 0]);
       const result = calculateRiskScore(answers);
 
       expect(result.categoryScores.behavioral).toBe(11);
@@ -201,9 +201,9 @@ describe("Scoring Engine", () => {
     });
 
     it("should correctly calculate knowledge category score", () => {
-      // Knowledge questions: 5-7
-      // Max: 2 + 1 + 1 = 4
-      const answers = createAnswerSet([0, 0, 0, 0, 2, 1, 1, 0, 0, 0, 0, 0]);
+      // Knowledge questions: 1-3 (new order)
+      // Max: 1 + 2 + 1 = 4
+      const answers = createAnswerSet([1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
       const result = calculateRiskScore(answers);
 
       expect(result.categoryScores.knowledge).toBe(4);
@@ -211,9 +211,9 @@ describe("Scoring Engine", () => {
     });
 
     it("should correctly calculate environmental category score", () => {
-      // Environmental questions: 8-10
+      // Environmental questions: 10-12 (new order)
       // Max: 2 + 2 + 2 = 6
-      const answers = createAnswerSet([0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0]);
+      const answers = createAnswerSet([0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2]);
       const result = calculateRiskScore(answers);
 
       expect(result.categoryScores.environmental).toBe(6);
@@ -221,9 +221,9 @@ describe("Scoring Engine", () => {
     });
 
     it("should correctly calculate socioeconomic category score", () => {
-      // Socioeconomic questions: 11-12
+      // Socioeconomic questions: 8-9 (new order)
       // Max: 2 + 2 = 4
-      const answers = createAnswerSet([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2]);
+      const answers = createAnswerSet([0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0]);
       const result = calculateRiskScore(answers);
 
       expect(result.categoryScores.socioeconomic).toBe(4);
@@ -244,13 +244,13 @@ describe("Scoring Engine", () => {
 
     it("should classify 31-60 as MODERATE", () => {
       // Create a score around 45
-      const answers = createAnswerSet([2, 3, 0, 0, 2, 0, 0, 2, 2, 0, 0, 0]);
+      const answers = createAnswerSet([0, 2, 0, 3, 0, 0, 0, 2, 0, 0, 2, 0]);
       const result = calculateRiskScore(answers);
       expect(result.riskLevel).toBe("moderate");
     });
 
     it("should classify 61-100 as HIGH", () => {
-      const answers = createAnswerSet([3, 3, 3, 2, 2, 1, 1, 2, 2, 2, 2, 2]);
+      const answers = createAnswerSet([1, 2, 1, 3, 3, 3, 2, 2, 2, 2, 2, 2]);
       const result = calculateRiskScore(answers);
       expect(result.riskLevel).toBe("high");
     });

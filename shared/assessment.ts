@@ -43,13 +43,47 @@ export interface MaxPointsPerCategory {
 
 /**
  * All 12 Assessment Questions
- * Organized by category with fixed point values
+ * Reordered by category: Knowledge → Behavioral → Socio-economic → Environmental
+ * knowledge_3 is first question overall (number = 1)
  */
 export const ASSESSMENT_QUESTIONS: AssessmentQuestion[] = [
+  // KNOWLEDGE QUESTIONS (3 questions, max 4 points)
+  // knowledge_3 is first overall
+  {
+    id: "knowledge_3",
+    number: 1,
+    category: "knowledge",
+    question: "Do you know what Antimicrobial Resistance (AMR) is?",
+    options: [
+      { text: "No", points: 0 },
+      { text: "Yes", points: 1 },
+    ],
+  },
+  {
+    id: "knowledge_1",
+    number: 2,
+    category: "knowledge",
+    question: "Do you know that antibiotics only work against bacteria and not viruses?",
+    options: [
+      { text: "No", points: 0 },
+      { text: "Yes", points: 2 },
+    ],
+  },
+  {
+    id: "knowledge_2",
+    number: 3,
+    category: "knowledge",
+    question: "Are you aware that it is bacteria that become resistant, not your body?",
+    options: [
+      { text: "No", points: 0 },
+      { text: "Yes", points: 1 },
+    ],
+  },
+
   // BEHAVIORAL QUESTIONS (4 questions, max 11 points)
   {
     id: "behavioral_1",
-    number: 1,
+    number: 4,
     category: "behavioral",
     question: "Do you buy antibiotics without a doctor's prescription?",
     options: [
@@ -60,7 +94,7 @@ export const ASSESSMENT_QUESTIONS: AssessmentQuestion[] = [
   },
   {
     id: "behavioral_2",
-    number: 2,
+    number: 5,
     category: "behavioral",
     question: "Do you stop taking antibiotics when you feel better, even if the course is not complete?",
     options: [
@@ -70,7 +104,7 @@ export const ASSESSMENT_QUESTIONS: AssessmentQuestion[] = [
   },
   {
     id: "behavioral_3",
-    number: 3,
+    number: 6,
     category: "behavioral",
     question: "Do you use leftover antibiotics from previous illnesses?",
     options: [
@@ -80,7 +114,7 @@ export const ASSESSMENT_QUESTIONS: AssessmentQuestion[] = [
   },
   {
     id: "behavioral_4",
-    number: 4,
+    number: 7,
     category: "behavioral",
     question: "Do you share your antibiotics with family members or friends?",
     options: [
@@ -89,75 +123,10 @@ export const ASSESSMENT_QUESTIONS: AssessmentQuestion[] = [
     ],
   },
 
-  // KNOWLEDGE QUESTIONS (3 questions, max 4 points)
-  {
-    id: "knowledge_1",
-    number: 5,
-    category: "knowledge",
-    question: "Do you know that antibiotics only work against bacteria and not viruses?",
-    options: [
-      { text: "No", points: 0 },
-      { text: "Yes", points: 2 },
-    ],
-  },
-  {
-    id: "knowledge_2",
-    number: 6,
-    category: "knowledge",
-    question: "Are you aware that it is bacteria that become resistant, not your body?",
-    options: [
-      { text: "No", points: 0 },
-      { text: "Yes", points: 1 },
-    ],
-  },
-  {
-    id: "knowledge_3",
-    number: 7,
-    category: "knowledge",
-    question: "Do you know what Antimicrobial Resistance (AMR) is?",
-    options: [
-      { text: "No", points: 0 },
-      { text: "Yes", points: 1 },
-    ],
-  },
-
-  // ENVIRONMENTAL QUESTIONS (3 questions, max 6 points)
-  {
-    id: "environmental_1",
-    number: 8,
-    category: "environmental",
-    question: "Do you have access to clean drinking water and proper sanitation?",
-    options: [
-      { text: "Yes", points: 0 },
-      { text: "No", points: 2 },
-    ],
-  },
-  {
-    id: "environmental_2",
-    number: 9,
-    category: "environmental",
-    question: "Do you live in an area with poor waste management or environmental pollution?",
-    options: [
-      { text: "No", points: 0 },
-      { text: "Yes", points: 2 },
-    ],
-  },
-  {
-    id: "environmental_3",
-    number: 10,
-    category: "environmental",
-    question: "How often do you wash your hands with clean water and soap?",
-    options: [
-      { text: "Always", points: 0 },
-      { text: "Sometimes", points: 1 },
-      { text: "Rarely", points: 2 },
-    ],
-  },
-
   // SOCIOECONOMIC QUESTIONS (2 questions, max 4 points)
   {
     id: "socioeconomic_1",
-    number: 11,
+    number: 8,
     category: "socioeconomic",
     question: "Do you skip doses of prescribed antibiotics due to cost?",
     options: [
@@ -167,12 +136,45 @@ export const ASSESSMENT_QUESTIONS: AssessmentQuestion[] = [
   },
   {
     id: "socioeconomic_2",
-    number: 12,
+    number: 9,
     category: "socioeconomic",
     question: "Do you buy antibiotics from informal vendors or street sellers instead of licensed pharmacies?",
     options: [
       { text: "No", points: 0 },
       { text: "Yes", points: 2 },
+    ],
+  },
+
+  // ENVIRONMENTAL QUESTIONS (3 questions, max 6 points)
+  {
+    id: "environmental_1",
+    number: 10,
+    category: "environmental",
+    question: "Do you have access to clean drinking water and proper sanitation?",
+    options: [
+      { text: "Yes", points: 0 },
+      { text: "No", points: 2 },
+    ],
+  },
+  {
+    id: "environmental_2",
+    number: 11,
+    category: "environmental",
+    question: "Do you live in an area with poor waste management or environmental pollution?",
+    options: [
+      { text: "No", points: 0 },
+      { text: "Yes", points: 2 },
+    ],
+  },
+  {
+    id: "environmental_3",
+    number: 12,
+    category: "environmental",
+    question: "How often do you wash your hands with clean water and soap?",
+    options: [
+      { text: "Always", points: 0 },
+      { text: "Sometimes", points: 1 },
+      { text: "Rarely", points: 2 },
     ],
   },
 ];
