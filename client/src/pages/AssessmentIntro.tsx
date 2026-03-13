@@ -11,10 +11,11 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface AssessmentIntroProps {
   onStart: () => void;
+  onResume?: () => void;
   isLoading?: boolean;
 }
 
-export default function AssessmentIntro({ onStart, isLoading = false }: AssessmentIntroProps) {
+export default function AssessmentIntro({ onStart, onResume, isLoading = false }: AssessmentIntroProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
       {/* Background medical imagery effect */}
@@ -44,6 +45,22 @@ export default function AssessmentIntro({ onStart, isLoading = false }: Assessme
           </CardHeader>
 
           <CardContent className="pt-8">
+            {/* Resume session notification */}
+            {onResume && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-gray-700 mb-3">
+                  You have a saved assessment session. Would you like to continue where you left off?
+                </p>
+                <button
+                  onClick={onResume}
+                  disabled={isLoading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                >
+                  {isLoading ? "Resuming..." : "Resume Assessment"}
+                </button>
+              </div>
+            )}
+
             {/* Introduction text */}
             <div className="mb-8 space-y-4">
               <p className="text-gray-700 leading-relaxed">

@@ -8,7 +8,7 @@
  * - Results display
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import QuestionCard from "@/components/QuestionCard";
 import AssessmentResults from "./AssessmentResults";
 import { Loader2 } from "lucide-react";
 import { AssessmentQuestion, AssessmentResult } from "@/lib/types";
+import { saveAssessmentProgress, getAssessmentProgress, clearAssessmentProgress } from "@/lib/localStorage";
 
 type AssessmentState = "intro" | "questions" | "results" | "loading" | "error";
 
@@ -28,12 +29,25 @@ export default function Assessment() {
   const [currentQuestion, setCurrentQuestion] = useState<AssessmentQuestion | null>(null);
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hasResumableSession, setHasResumableSession] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   // tRPC mutations and queries - MUST be called in component body
   const createSessionMutation = trpc.assessment.createSession.useMutation();
   const submitResponseMutation = trpc.assessment.submitResponse.useMutation();
   const submitAssessmentMutation = trpc.assessment.submitAssessment.useMutation();
   const utils = trpc.useUtils(); // Call hook in component body
+
+  /**
+   * Check for resumable session on component mount
+   */
+  useEffect(() => {
+    const savedProgress = getAssessmentProgress();
+    if (savedProgress) {
+      setHasResumableSession(true);
+    }
+    setIsInitializing(false);
+  }, []);
 
   /**
    * Start assessment - create session
@@ -45,6 +59,10 @@ export default function Assessment() {
       setSessionId(session.sessionId);
       setCurrentQuestionNumber(1);
       setSelectedAnswers({});
+      
+      // Clear any previous saved progress
+      clearAssessmentProgress();
+      setHasResumableSession(false);
       
       // Fetch first question
       const question = await utils.assessment.getQuestion.fetch({
@@ -62,6 +80,40 @@ export default function Assessment() {
   }, [createSessionMutation, utils]);
 
   /**
+   * Resume saved assessment session
+   */
+  const handleResume = useCallback(async () => {
+    const savedProgress = getAssessmentProgress();
+    if (!savedProgress) {
+      toast.error("No saved session found. Starting new assessment.");
+      return;
+    }
+
+    setState("loading");
+    try {
+      setSessionId(savedProgress.sessionId);
+      setCurrentQuestionNumber(savedProgress.currentQuestionNumber);
+      setSelectedAnswers(savedProgress.selectedAnswers);
+      setHasResumableSession(false);
+      
+      // Fetch the current question
+      const question = await utils.assessment.getQuestion.fetch({
+        sessionId: savedProgress.sessionId,
+        questionNumber: savedProgress.currentQuestionNumber,
+      });
+      setCurrentQuestion(question as AssessmentQuestion);
+      setState("questions");
+      toast.success("Assessment resumed! You were on question " + savedProgress.currentQuestionNumber);
+    } catch (err) {
+      console.error("Error resuming assessment:", err);
+      clearAssessmentProgress();
+      setError(err instanceof Error ? err.message : "Failed to resume assessment");
+      setState("error");
+      toast.error("Failed to resume assessment. Starting fresh.");
+    }
+  }, [utils]);
+
+  /**
    * Handle answer selection
    */
   const handleSelectAnswer = useCallback(
@@ -69,16 +121,25 @@ export default function Assessment() {
       if (!sessionId || !currentQuestion) return;
 
       try {
-        setSelectedAnswers((prev) => ({
-          ...prev,
+        const updatedAnswers = {
+          ...selectedAnswers,
           [currentQuestion.id]: answer,
-        }));
+        };
+        setSelectedAnswers(updatedAnswers);
 
         // Submit response to backend
         await submitResponseMutation.mutateAsync({
           sessionId,
           questionId: currentQuestion.id,
           answerText: answer,
+        });
+
+        // Save progress to localStorage
+        saveAssessmentProgress({
+          sessionId,
+          currentQuestionNumber,
+          selectedAnswers: updatedAnswers,
+          timestamp: Date.now(),
         });
 
         // Move to next question or show results
@@ -89,6 +150,14 @@ export default function Assessment() {
             questionNumber: currentQuestionNumber + 1,
           });
           setCurrentQuestion(nextQuestion as AssessmentQuestion);
+          
+          // Update localStorage with new question number
+          saveAssessmentProgress({
+            sessionId,
+            currentQuestionNumber: currentQuestionNumber + 1,
+            selectedAnswers: updatedAnswers,
+            timestamp: Date.now(),
+          });
         } else {
           // All questions answered - calculate results
           await handleSubmitAssessment();
@@ -98,7 +167,7 @@ export default function Assessment() {
         toast.error("Failed to save your answer. Please try again.");
       }
     },
-    [sessionId, currentQuestion, currentQuestionNumber, submitResponseMutation, utils]
+    [sessionId, currentQuestion, currentQuestionNumber, submitResponseMutation, utils, selectedAnswers]
   );
 
   /**
@@ -127,14 +196,30 @@ export default function Assessment() {
    * Restart assessment
    */
   const handleRestart = useCallback(() => {
+    clearAssessmentProgress();
     setSessionId(null);
     setCurrentQuestionNumber(1);
     setSelectedAnswers({});
     setCurrentQuestion(null);
     setResult(null);
     setError(null);
+    setHasResumableSession(false);
     setState("intro");
   }, []);
+
+  /**
+   * Show loading state while checking for resumable session
+   */
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-semibold">Initializing...</p>
+        </div>
+      </div>
+    );
+  }
 
   /**
    * Render based on state
@@ -168,7 +253,13 @@ export default function Assessment() {
   }
 
   if (state === "intro") {
-    return <AssessmentIntro onStart={handleStart} isLoading={createSessionMutation.isPending} />;
+    return (
+      <AssessmentIntro 
+        onStart={handleStart} 
+        onResume={hasResumableSession ? handleResume : undefined}
+        isLoading={createSessionMutation.isPending} 
+      />
+    );
   }
 
   if (state === "questions" && currentQuestion) {
@@ -191,6 +282,11 @@ export default function Assessment() {
   }
 
   if (state === "results" && result) {
+    // Clear saved progress when results are displayed
+    useEffect(() => {
+      clearAssessmentProgress();
+    }, []);
+
     return (
       <AssessmentResults
         totalScore={result.totalScore}
